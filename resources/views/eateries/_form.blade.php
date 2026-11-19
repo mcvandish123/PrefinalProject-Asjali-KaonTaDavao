@@ -58,6 +58,9 @@
             {{ $feature->name }}
         </label>
     @endforeach
+    @error('features')
+        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+    @enderror
     @error('features.*')
         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
     @enderror

@@ -173,7 +173,7 @@ class KaonTaDavaoTest extends TestCase
     public function test_index_paginates_six_and_combines_filters(): void
     {
         $district = District::factory()->create();
-        Eatery::factory(7)->for($district)->create();
+        Eatery::factory(7)->for($district)->create(['specialty' => null]);
         Eatery::factory()->create(['name' => 'Sisig Hub', 'specialty' => 'Sisig']);
 
         $this->get(route('eateries.index'))->assertOk()->assertViewHas('eateries', fn ($page) => $page->perPage() === 6 && $page->count() === 6);
@@ -240,6 +240,7 @@ class KaonTaDavaoTest extends TestCase
             'price_range' => 'budget',
             'permit_no' => 'DVO-2026-5555',
             'expires_on' => now()->addYear()->toDateString(),
+            'features' => [Feature::factory()->create()->id],
         ];
 
         $this->post(route('eateries.store'), $payload)->assertSessionHas('status', 'Eatery added.');
@@ -248,6 +249,69 @@ class KaonTaDavaoTest extends TestCase
         $this->put(route('eateries.update', $eatery), [...$payload, 'name' => 'Renamed Eatery'])
             ->assertRedirect(route('eateries.show', 'renamed-eatery'))
             ->assertSessionHas('status', 'Eatery updated.');
+    }
+
+    public function test_eatery_request_exact_messages(): void
+    {
+        Eatery::factory()->create(['name' => 'Taken Name']);
+
+        $this->post(route('eateries.store'), [
+            'name' => 'Taken Name',
+            'permit_no' => 'DVO-26-1',
+            'expires_on' => now()->subDay()->toDateString(),
+        ])->assertSessionHasErrors([
+            'name' => 'Kaon Ta Asjali already lists an eatery with this name.',
+            'features' => 'Pick at least one feature.',
+            'permit_no' => 'Permit number must look like DVO-2026-0415.',
+            'expires_on' => 'The permit must not be expired.',
+        ]);
+    }
+
+    public function test_review_request_exact_messages_and_closed_eatery_403(): void
+    {
+        $eatery = Eatery::factory()->create();
+
+        $this->post(route('eateries.reviews.store', $eatery), ['rating' => 9, 'body' => 'short'])
+            ->assertSessionHasErrors([
+                'user_id' => 'Choose who is writing this review.',
+                'rating' => 'Ratings go from 1 to 5 stars only.',
+                'body' => 'Kaon Ta Asjali: reviews need at least 10 characters.',
+            ]);
+
+        $closed = Eatery::factory()->closed()->create();
+        $this->post(route('eateries.reviews.store', $closed), [])->assertForbidden();
+    }
+
+    public function test_update_without_changes_passes_and_unchecked_open_saves_false(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $eatery = Eatery::with(['permit', 'features'])->where('slug', 'carinderia-ni-asjali')->firstOrFail();
+
+        $this->put(route('eateries.update', $eatery), [
+            'name' => $eatery->name,
+            'district_id' => $eatery->district_id,
+            'address' => $eatery->address,
+            'price_range' => $eatery->price_range,
+            'specialty' => $eatery->specialty,
+            'permit_no' => $eatery->permit->permit_no,
+            'expires_on' => $eatery->permit->expires_on->toDateString(),
+            'features' => $eatery->features->pluck('id')->all(),
+        ])->assertSessionHasNoErrors()->assertSessionHas('status', 'Eatery updated.');
+
+        $this->assertFalse($eatery->fresh()->is_open);
+    }
+
+    public function test_forms_show_summary_field_errors_and_old_input(): void
+    {
+        $eatery = Eatery::factory()->create();
+        $user = User::factory()->create();
+
+        $this->from(route('eateries.show', $eatery))
+            ->followingRedirects()
+            ->post(route('eateries.reviews.store', $eatery), ['user_id' => $user->id, 'rating' => 3, 'body' => 'too short'])
+            ->assertSee('Please fix the following:')
+            ->assertSee('Kaon Ta Asjali: reviews need at least 10 characters.')
+            ->assertSee('too short');
     }
 
     public function test_expired_permit_shows_notice(): void

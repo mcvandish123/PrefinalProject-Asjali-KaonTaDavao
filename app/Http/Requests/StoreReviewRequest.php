@@ -6,6 +6,9 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreReviewRequest extends FormRequest
 {
+    /**
+     * Reviews are only accepted while the eatery from the route is open.
+     */
     public function authorize(): bool
     {
         return (bool) $this->route('eatery')?->is_open;
@@ -29,9 +32,9 @@ class StoreReviewRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'user_id.required' => "Please choose who is reviewing - Asjali\x27s Food Guide needs a reviewer.",
-            'rating.between' => 'Rating must be from 1 to 5 stars.',
-            'body.min' => "Tell Asjali\x27s Food Guide a little more - at least 10 characters.",
+            'user_id.required' => 'Choose who is writing this review.',
+            'rating.between' => 'Ratings go from 1 to 5 stars only.',
+            'body.min' => 'Kaon Ta Asjali: reviews need at least 10 characters.',
         ];
     }
 }

@@ -22,16 +22,16 @@ class StoreEateryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'district_id' => ['required', 'exists:districts,id'],
             'name' => ['required', 'string', 'max:100', 'unique:eateries,name'],
+            'district_id' => ['required', 'exists:districts,id'],
             'address' => ['required', 'string', 'max:255'],
             'price_range' => ['required', 'in:budget,mid,splurge'],
-            'specialty' => ['nullable', 'string', 'max:255'],
+            'specialty' => ['nullable', 'string', 'max:100'],
             'is_open' => ['boolean'],
-            'permit_no' => ['required', 'string', 'max:50', 'unique:permits,permit_no'],
-            'expires_on' => ['required', 'date', 'after:today'],
-            'features' => ['nullable', 'array'],
+            'features' => ['required', 'array', 'min:1'],
             'features.*' => ['exists:features,id'],
+            'permit_no' => ['required', 'regex:/^DVO-\d{4}-\d{4,5}$/', 'unique:permits,permit_no'],
+            'expires_on' => ['required', 'date', 'after:today'],
         ];
     }
 
@@ -41,11 +41,10 @@ class StoreEateryRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'district_id.required' => "Kaon Ta! Davao - Asjali\x27s Food Guide needs a district for every eatery.",
-            'name.required' => "Please give the eatery a name for Asjali\x27s Food Guide.",
-            'name.unique' => "Asjali\x27s Food Guide already lists an eatery with that name.",
-            'price_range.in' => 'Price range must be budget, mid or splurge.',
-            'expires_on.after' => 'The permit must expire after today.',
+            'name.unique' => 'Kaon Ta Asjali already lists an eatery with this name.',
+            'features.required' => 'Pick at least one feature.',
+            'permit_no.regex' => 'Permit number must look like DVO-2026-0415.',
+            'expires_on.after' => 'The permit must not be expired.',
         ];
     }
 }
