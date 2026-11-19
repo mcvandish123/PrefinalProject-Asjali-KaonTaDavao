@@ -9,7 +9,7 @@ class DistrictController extends Controller
 {
     public function index(): View
     {
-        $districts = District::withCount(['eateries', 'reviews'])->orderBy('name')->get();
+        $districts = District::withCount('eateries')->orderBy('name')->get();
 
         return view('districts.index', compact('districts'));
     }
@@ -23,7 +23,7 @@ class DistrictController extends Controller
             ->withCount('reviews')
             ->withAvg('reviews', 'rating')
             ->orderBy('name')
-            ->paginate(9);
+            ->paginate(6);
 
         return view('districts.show', compact('district', 'eateries'));
     }

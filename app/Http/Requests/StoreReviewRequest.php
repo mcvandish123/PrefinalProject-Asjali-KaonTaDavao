@@ -8,7 +8,7 @@ class StoreReviewRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->route('eatery')?->is_open;
     }
 
     /**

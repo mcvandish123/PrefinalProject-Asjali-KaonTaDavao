@@ -11,7 +11,7 @@
             </h1>
             <p class="text-stone-500">
                 <a href="{{ route('districts.show', $eatery->district) }}" class="font-medium hover:underline">{{ $eatery->district->name }}</a>
-                · {{ $eatery->address }} · {{ ucfirst($eatery->price_range) }}
+                · {{ $eatery->address }} · {{ str_repeat('₱', ['budget' => 1, 'mid' => 2, 'splurge' => 3][$eatery->price_range] ?? 1) }}
                 @if ($eatery->specialty)
                     · Specialty: {{ $eatery->specialty }}
                 @endif
@@ -45,7 +45,7 @@
             <p>
                 {{ $eatery->permit->permit_no }} · expires {{ $eatery->permit->expires_on->format('F j, Y') }}
                 @if ($eatery->permit->isExpired())
-                    <span class="font-semibold text-red-700">(expired)</span>
+                    <span class="font-semibold text-red-700">Permit expired</span>
                 @endif
             </p>
         </section>
@@ -73,11 +73,14 @@
     <section>
         <h2 class="mb-2 text-lg font-semibold">Reviews</h2>
         @forelse ($eatery->reviews as $review)
-            @include('reviews.partials.review')
+            @include('reviews.partials.review', ['context' => 'eatery'])
         @empty
             <p class="mb-4 text-stone-500">No reviews yet.</p>
         @endforelse
 
+        @unless ($eatery->is_open)
+            <p class="mt-6 rounded border border-stone-300 bg-stone-100 p-4 text-stone-600">This eatery is closed. Reviews are paused.</p>
+        @else
         <form method="POST" action="{{ route('eateries.reviews.store', $eatery) }}" class="mt-6 max-w-xl rounded border border-amber-200 bg-white p-4">
             @csrf
             <h3 class="mb-3 font-semibold">Write a review</h3>
@@ -101,5 +104,6 @@
 
             <button type="submit" class="rounded bg-red-800 px-4 py-2 font-semibold text-white hover:bg-red-700">Submit review</button>
         </form>
+        @endunless
     </section>
 @endsection

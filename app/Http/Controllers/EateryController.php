@@ -17,23 +17,35 @@ class EateryController extends Controller
 {
     public function index(Request $request): View
     {
-        $activeFeature = $request->filled('feature') ? Feature::find($request->query('feature')) : null;
+        $search = trim((string) $request->query('q', ''));
+        $districtId = $request->query('district');
+        $featureName = $request->query('feature');
 
         $eateries = Eatery::with(['district', 'features', 'permit'])
             ->withCount('reviews')
             ->withAvg('reviews', 'rating')
-            ->when($activeFeature, fn ($query) => $query->whereHas(
+            ->when($search !== '', fn ($query) => $query->where(
+                fn ($match) => $match->where('name', 'like', "%{$search}%")
+                    ->orWhere('specialty', 'like', "%{$search}%")
+            ))
+            ->when(filled($districtId), fn ($query) => $query->where('district_id', (int) $districtId))
+            ->when(filled($featureName), fn ($query) => $query->whereHas(
                 'features',
-                fn ($features) => $features->whereKey($activeFeature->id)
+                fn ($features) => $features->where('name', (string) $featureName)
             ))
             ->orderBy('name')
-            ->paginate(9)
+            ->paginate(6)
             ->withQueryString();
 
         return view('eateries.index', [
             'eateries' => $eateries,
+            'districts' => District::orderBy('name')->get(),
             'features' => Feature::orderBy('name')->get(),
-            'activeFeature' => $activeFeature,
+            'filters' => [
+                'q' => $search,
+                'district' => $districtId,
+                'feature' => $featureName,
+            ],
         ]);
     }
 
@@ -65,7 +77,10 @@ class EateryController extends Controller
 
     public function show(Eatery $eatery): View
     {
-        $eatery->load(['district', 'permit', 'dishes', 'features', 'reviews.user']);
+        $eatery->load([
+            'district', 'permit', 'dishes', 'features',
+            'reviews' => fn ($query) => $query->with('user')->latest()->latest('id'),
+        ]);
 
         return view('eateries.show', [
             'eatery' => $eatery,

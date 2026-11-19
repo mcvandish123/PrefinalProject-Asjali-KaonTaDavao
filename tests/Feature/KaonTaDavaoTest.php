@@ -60,7 +60,7 @@ class KaonTaDavaoTest extends TestCase
         Eatery::factory()->create(['name' => 'Untagged Place']);
         $tagged->features()->attach($feature);
 
-        $this->get(route('eateries.index', ['feature' => $feature->id]))
+        $this->get(route('eateries.index', ['feature' => 'Halal']))
             ->assertOk()
             ->assertSee('Tagged Place')
             ->assertDontSee('Untagged Place');
@@ -153,6 +153,67 @@ class KaonTaDavaoTest extends TestCase
     {
         $this->post(route('eateries.store'), ['price_range' => 'cheap'])
             ->assertSessionHasErrors(['price_range', 'name', 'district_id']);
+    }
+
+    public function test_home_shows_counts_and_top_three_rated(): void
+    {
+        $user = User::factory()->create();
+        foreach ([5, 4, 3, 2] as $rating) {
+            Review::factory()->for(Eatery::factory()->create(['name' => "Rated {$rating} Place"]))->for($user)->create(['rating' => $rating]);
+        }
+        Eatery::factory()->create(['name' => 'Unreviewed Place']);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSeeInOrder(['Top Rated', 'Rated 5 Place', 'Rated 4 Place', 'Rated 3 Place'])
+            ->assertDontSee('Rated 2 Place')
+            ->assertDontSee('Unreviewed Place');
+    }
+
+    public function test_index_paginates_six_and_combines_filters(): void
+    {
+        $district = District::factory()->create();
+        Eatery::factory(7)->for($district)->create();
+        Eatery::factory()->create(['name' => 'Sisig Hub', 'specialty' => 'Sisig']);
+
+        $this->get(route('eateries.index'))->assertOk()->assertViewHas('eateries', fn ($page) => $page->perPage() === 6 && $page->count() === 6);
+
+        $this->get(route('eateries.index', ['q' => 'sisig', 'district' => $district->id]))
+            ->assertOk()
+            ->assertSee('No eateries match your filters.');
+
+        $this->get(route('eateries.index', ['q' => 'sisig']))->assertOk()->assertSee('Sisig Hub');
+    }
+
+    public function test_unknown_slug_returns_404(): void
+    {
+        $this->get('/eateries/does-not-exist')->assertNotFound();
+    }
+
+    public function test_closed_eatery_pauses_reviews(): void
+    {
+        $eatery = Eatery::factory()->closed()->create();
+        $user = User::factory()->create();
+
+        $this->get(route('eateries.show', $eatery))->assertSee('This eatery is closed. Reviews are paused.');
+        $this->post(route('eateries.reviews.store', $eatery), ['user_id' => $user->id, 'rating' => 4, 'body' => 'Nice place indeed'])
+            ->assertForbidden();
+    }
+
+    public function test_review_can_be_deleted(): void
+    {
+        $review = Review::factory()->create();
+
+        $this->delete(route('reviews.destroy', $review))->assertRedirect(route('eateries.show', $review->eatery));
+        $this->assertModelMissing($review);
+    }
+
+    public function test_expired_permit_shows_notice(): void
+    {
+        $eatery = Eatery::factory()->create();
+        Permit::factory()->expired()->for($eatery)->create();
+
+        $this->get(route('eateries.show', $eatery))->assertSee('Permit expired');
     }
 
     public function test_expired_permit_state(): void
