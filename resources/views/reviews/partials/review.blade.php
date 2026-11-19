@@ -6,7 +6,7 @@
             <a href="{{ route('reviewers.show', $review->user) }}" class="font-semibold text-red-800 hover:underline">{{ $review->user->name }}</a>
         @endif
         <span class="flex items-center gap-2">
-            <x-star-rating :rating="$review->rating" />
+            <x-rating :rating="$review->rating" />
             <span class="text-stone-500">{{ $review->rating }}/5</span>
             @if ($context === 'eatery')
                 <span class="text-stone-400">{{ $review->created_at->format('M j, Y') }}</span>

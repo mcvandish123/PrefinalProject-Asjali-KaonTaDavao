@@ -18,7 +18,7 @@
             </p>
             <p class="mt-1 text-sm text-stone-500">
                 @if ($averageRating)
-                    <x-star-rating :rating="$averageRating" /> {{ number_format($averageRating, 1) }} ·
+                    <x-rating :rating="$averageRating" /> {{ number_format($averageRating, 1) }} ·
                 @endif
                 {{ $eatery->reviews->count() }} {{ Str::plural('review', $eatery->reviews->count()) }}
             </p>

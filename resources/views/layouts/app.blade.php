@@ -10,18 +10,12 @@
     <header class="bg-red-800 text-white shadow">
         <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
             <a href="{{ route('home') }}" class="text-xl font-bold">Kaon Ta! Davao – Asjali's Food Guide</a>
-            <nav class="flex gap-4 text-sm font-medium">
-                <a href="{{ route('eateries.index') }}" class="hover:underline">Eateries</a>
-                <a href="{{ route('districts.index') }}" class="hover:underline">Districts</a>
-                <a href="{{ route('eateries.create') }}" class="rounded bg-amber-400 px-3 py-1 text-stone-900 hover:bg-amber-300">Add eatery</a>
-            </nav>
+            @include('partials.nav')
         </div>
     </header>
 
     <main class="mx-auto max-w-5xl px-4 py-8">
-        @if (session('status'))
-            <x-alert type="success">{{ session('status') }}</x-alert>
-        @endif
+        @include('partials.flash')
 
         @if ($errors->any())
             <x-alert type="error">

@@ -25,7 +25,7 @@
     </div>
     <p class="text-sm text-stone-600">
         @if ($eatery->reviews_count > 0)
-            {{ number_format($eatery->reviews_avg_rating, 1) }} ★ ({{ $eatery->reviews_count }} {{ Str::plural('review', $eatery->reviews_count) }})
+            <x-rating :rating="$eatery->reviews_avg_rating" compact /> ({{ $eatery->reviews_count }} {{ Str::plural('review', $eatery->reviews_count) }})
         @else
             No reviews yet
         @endif

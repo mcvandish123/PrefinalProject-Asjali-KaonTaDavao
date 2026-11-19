@@ -1,0 +1,3 @@
+@if (session('status'))
+    <x-alert type="success">{{ session('status') }}</x-alert>
+@endif
