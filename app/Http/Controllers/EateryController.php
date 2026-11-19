@@ -10,6 +10,8 @@ use App\Models\Feature;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -62,7 +64,7 @@ class EateryController extends Controller
         $data = $request->validated();
 
         $eatery = Eatery::create([
-            ...collect($data)->only(['district_id', 'name', 'address', 'price_range', 'specialty', 'is_open'])->all(),
+            ...Arr::only($data, ['district_id', 'name', 'address', 'price_range', 'specialty', 'is_open']),
             'slug' => Str::slug($data['name']),
         ]);
 
@@ -105,7 +107,7 @@ class EateryController extends Controller
         $data = $request->validated();
 
         $eatery->update([
-            ...collect($data)->only(['district_id', 'name', 'address', 'price_range', 'specialty', 'is_open'])->all(),
+            ...Arr::only($data, ['district_id', 'name', 'address', 'price_range', 'specialty', 'is_open']),
             'slug' => Str::slug($data['name']),
         ]);
         $eatery->permit()->updateOrCreate([], [
@@ -119,11 +121,13 @@ class EateryController extends Controller
 
     public function destroy(Eatery $eatery): RedirectResponse
     {
-        $eatery->reviews()->delete();
-        $eatery->dishes()->delete();
-        $eatery->permit()->delete();
-        $eatery->features()->detach();
-        $eatery->delete();
+        DB::transaction(function () use ($eatery) {
+            $eatery->reviews()->delete();
+            $eatery->dishes()->delete();
+            $eatery->permit()->delete();
+            $eatery->features()->detach();
+            $eatery->delete();
+        });
 
         return redirect()->route('eateries.index')->with('status', 'Eatery deleted.');
     }

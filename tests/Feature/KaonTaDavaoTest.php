@@ -208,6 +208,48 @@ class KaonTaDavaoTest extends TestCase
         $this->assertModelMissing($review);
     }
 
+    public function test_flash_messages_and_destroy_leaves_no_child_rows(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $eatery = Eatery::with(['permit', 'dishes', 'reviews'])->where('slug', '!=', 'carinderia-ni-asjali')->firstOrFail();
+        $user = User::first();
+
+        $this->post(route('eateries.reviews.store', $eatery), ['user_id' => $user->id, 'rating' => 5, 'body' => 'Sarap kaayo ang tinola!'])
+            ->assertSessionHas('status', 'Salamat! Review posted.');
+
+        $review = $eatery->reviews()->first();
+        $this->delete(route('reviews.destroy', $review))->assertSessionHas('status', 'Review deleted.');
+
+        $this->delete(route('eateries.destroy', $eatery))
+            ->assertRedirect(route('eateries.index'))
+            ->assertSessionHas('status', 'Eatery deleted.');
+
+        $this->assertDatabaseMissing('permits', ['eatery_id' => $eatery->id]);
+        $this->assertDatabaseMissing('dishes', ['eatery_id' => $eatery->id]);
+        $this->assertDatabaseMissing('reviews', ['eatery_id' => $eatery->id]);
+        $this->assertDatabaseMissing('eatery_feature', ['eatery_id' => $eatery->id]);
+    }
+
+    public function test_store_and_update_flash_messages(): void
+    {
+        $district = District::factory()->create();
+        $payload = [
+            'district_id' => $district->id,
+            'name' => 'Flash Test Eatery',
+            'address' => 'Test St',
+            'price_range' => 'budget',
+            'permit_no' => 'DVO-2026-5555',
+            'expires_on' => now()->addYear()->toDateString(),
+        ];
+
+        $this->post(route('eateries.store'), $payload)->assertSessionHas('status', 'Eatery added.');
+
+        $eatery = Eatery::where('slug', 'flash-test-eatery')->firstOrFail();
+        $this->put(route('eateries.update', $eatery), [...$payload, 'name' => 'Renamed Eatery'])
+            ->assertRedirect(route('eateries.show', 'renamed-eatery'))
+            ->assertSessionHas('status', 'Eatery updated.');
+    }
+
     public function test_expired_permit_shows_notice(): void
     {
         $eatery = Eatery::factory()->create();

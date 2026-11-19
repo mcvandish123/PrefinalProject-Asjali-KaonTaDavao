@@ -13,7 +13,7 @@ class ReviewController extends Controller
     {
         $eatery->reviews()->create($request->validated());
 
-        return redirect()->route('eateries.show', $eatery)->with('status', 'Thanks for your review!');
+        return redirect()->route('eateries.show', $eatery)->with('status', 'Salamat! Review posted.');
     }
 
     public function destroy(Review $review): RedirectResponse
