@@ -40,6 +40,9 @@
         <input type="checkbox" name="is_open" value="1" @checked($isOpen)>
         Currently open
     </label>
+    @error('is_open')
+        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+    @enderror
 </div>
 
 <x-form-field name="permit_no" label="Business permit number">

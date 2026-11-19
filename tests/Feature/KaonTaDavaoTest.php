@@ -9,7 +9,9 @@ use App\Models\Permit;
 use App\Models\Review;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -29,6 +31,65 @@ class KaonTaDavaoTest extends TestCase
         $this->assertTrue($eatery->is_open);
         $this->assertDatabaseHas('users', ['email' => 'asjali@kaonta.test']);
         $this->assertDatabaseHas('users', ['email' => 'tita.asjali@kaonta.test']);
+    }
+
+    public function test_seed_totals_and_exact_data(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertSame(6, District::count());
+        $this->assertSame(6, Feature::count());
+        $this->assertSame(12, User::count());
+        $this->assertSame(15, Eatery::count());
+        $this->assertSame(3, Eatery::where('is_open', false)->count());
+        $this->assertSame(15, Permit::count());
+        $this->assertGreaterThanOrEqual(1, Permit::where('expires_on', '<', now())->count());
+        $this->assertSame(0, Review::whereHas('eatery', fn ($query) => $query->where('is_open', false))->count());
+
+        $mine = Eatery::where('slug', 'carinderia-ni-asjali')->firstOrFail();
+        $this->assertSame('San Pedro St., Poblacion, Davao City', $mine->address);
+        $this->assertSame('Tinolang Manok', $mine->specialty);
+        $this->assertEqualsCanonicalizing(['Suki ni Asjali', 'Budget Meal'], $mine->features->pluck('name')->all());
+        $this->assertEquals(
+            ['Tinolang Manok' => '85.00', 'Kinilaw na Tuna' => '120.00', 'Durian Shake' => '75.00'],
+            $mine->dishes->pluck('price', 'name')->all()
+        );
+        $this->assertTrue($mine->dishes->firstWhere('name', 'Tinolang Manok')->is_bestseller);
+        $this->assertGreaterThanOrEqual(3, $mine->reviews()->count());
+        $this->assertDatabaseHas('reviews', [
+            'eatery_id' => $mine->id,
+            'rating' => 5,
+            'body' => 'Lami kaayo! Balik-balikan ni Tita Asjali.',
+            'user_id' => User::where('email', 'tita.asjali@kaonta.test')->value('id'),
+        ]);
+        $this->assertTrue(Hash::check('kaonta2026', User::where('email', 'asjali@kaonta.test')->value('password')));
+    }
+
+    public function test_no_page_lazy_loads_relations(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        Model::preventLazyLoading();
+
+        $this->get(route('home'))->assertOk();
+        $this->get(route('eateries.index'))->assertOk();
+        $this->get(route('eateries.index', ['q' => 'a', 'district' => 1, 'feature' => 'Halal']))->assertOk();
+        $this->get(route('eateries.create'))->assertOk();
+        $this->get(route('districts.index'))->assertOk();
+
+        foreach (District::all() as $district) {
+            $this->get(route('districts.show', $district))->assertOk();
+        }
+
+        foreach (Eatery::all() as $eatery) {
+            $this->get(route('eateries.show', $eatery))->assertOk();
+            $this->get(route('eateries.edit', $eatery))->assertOk();
+        }
+
+        foreach (User::all() as $user) {
+            $this->get(route('reviewers.show', $user))->assertOk();
+        }
+
+        Model::preventLazyLoading(false);
     }
 
     public function test_schema_matches_spec(): void
@@ -211,7 +272,7 @@ class KaonTaDavaoTest extends TestCase
     public function test_flash_messages_and_destroy_leaves_no_child_rows(): void
     {
         $this->seed(DatabaseSeeder::class);
-        $eatery = Eatery::with(['permit', 'dishes', 'reviews'])->where('slug', '!=', 'carinderia-ni-asjali')->firstOrFail();
+        $eatery = Eatery::with(['permit', 'dishes', 'reviews'])->where('slug', '!=', 'carinderia-ni-asjali')->where('is_open', true)->firstOrFail();
         $user = User::first();
 
         $this->post(route('eateries.reviews.store', $eatery), ['user_id' => $user->id, 'rating' => 5, 'body' => 'Sarap kaayo ang tinola!'])

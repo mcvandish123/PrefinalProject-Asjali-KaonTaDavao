@@ -9,8 +9,8 @@ class DistrictSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach (['Poblacion', 'Agdao', 'Buhangin', 'Toril', 'Talomo'] as $name) {
-            District::firstOrCreate(['name' => $name]);
+        foreach (['Poblacion', 'Talomo', 'Agdao', 'Buhangin', 'Toril', 'Bunawan'] as $name) {
+            District::create(['name' => $name]);
         }
     }
 }

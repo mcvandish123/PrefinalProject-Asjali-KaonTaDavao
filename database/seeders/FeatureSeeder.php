@@ -9,8 +9,8 @@ class FeatureSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach (['Halal', 'Budget Meal', 'Open 24 Hours', 'Suki ni Asjali'] as $name) {
-            Feature::firstOrCreate(['name' => $name]);
+        foreach (['Suki ni Asjali', 'Budget Meal', 'Halal', 'Open 24 Hours', 'Aircon', 'Free Wifi'] as $name) {
+            Feature::create(['name' => $name]);
         }
     }
 }

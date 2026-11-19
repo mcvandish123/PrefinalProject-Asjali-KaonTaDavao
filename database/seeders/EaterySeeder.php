@@ -7,8 +7,6 @@ use App\Models\District;
 use App\Models\Eatery;
 use App\Models\Feature;
 use App\Models\Permit;
-use App\Models\Review;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -17,43 +15,67 @@ class EaterySeeder extends Seeder
     public function run(): void
     {
         $districts = District::all();
-        $genericFeatures = Feature::where('name', '!=', 'Suki ni Asjali')->get();
-        $users = User::all();
+        $features = Feature::all();
 
-        Eatery::factory(8)
-            ->recycle($districts)
-            ->create()
-            ->each(function (Eatery $eatery) use ($genericFeatures, $users) {
-                Permit::factory()->for($eatery)->create();
-                Dish::factory(3)->for($eatery)->create();
-                Dish::factory()->bestseller()->for($eatery)->create();
-                $eatery->features()->sync($genericFeatures->random(2)->pluck('id'));
-                Review::factory(2)->for($eatery)->recycle($users)->create();
-            });
+        $this->createMyEatery($districts);
+        $this->createFactoryEateries($districts, $features);
+    }
 
+    private function createMyEatery($districts): void
+    {
         $name = 'Carinderia ni Asjali';
-        $mine = Eatery::create([
+
+        $eatery = Eatery::create([
             'district_id' => $districts->firstWhere('name', 'Poblacion')->id,
             'name' => $name,
             'slug' => Str::slug($name),
-            'address' => 'Poblacion, Davao City',
+            'address' => 'San Pedro St., Poblacion, Davao City',
             'price_range' => 'budget',
-            'specialty' => 'Tinola',
+            'specialty' => 'Tinolang Manok',
             'is_open' => true,
         ]);
 
-        Permit::create([
-            'eatery_id' => $mine->id,
+        $eatery->features()->sync(
+            Feature::whereIn('name', ['Suki ni Asjali', 'Budget Meal'])->pluck('id')
+        );
+
+        $eatery->permit()->create([
             'permit_no' => 'DVO-2026-0523',
             'expires_on' => '2027-05-23',
         ]);
 
-        $mine->dishes()->createMany([
-            ['name' => 'Tinola', 'price' => 120, 'is_bestseller' => true],
-            ['name' => 'Kinilaw', 'price' => 150, 'is_bestseller' => false],
-            ['name' => 'Durian Shake', 'price' => 90, 'is_bestseller' => false],
+        $eatery->dishes()->createMany([
+            ['name' => 'Tinolang Manok', 'price' => 85.00, 'is_bestseller' => true],
+            ['name' => 'Kinilaw na Tuna', 'price' => 120.00, 'is_bestseller' => false],
+            ['name' => 'Durian Shake', 'price' => 75.00, 'is_bestseller' => false],
         ]);
+    }
 
-        $mine->features()->sync(Feature::where('name', 'Suki ni Asjali')->pluck('id'));
+    private function createFactoryEateries($districts, $features): void
+    {
+        $eateries = Eatery::factory()
+            ->count(11)
+            ->recycle($districts)
+            ->create()
+            ->concat(
+                Eatery::factory()->count(3)->closed()->recycle($districts)->create()
+            );
+
+        foreach ($eateries->values() as $index => $eatery) {
+            $permit = Permit::factory()->for($eatery);
+
+            // The first two factory eateries get an already expired permit.
+            if ($index < 2) {
+                $permit = $permit->expired();
+            }
+
+            $permit->create(['permit_no' => sprintf('DVO-2026-%04d', 1000 + $index)]);
+
+            Dish::factory()->count(fake()->numberBetween(2, 5))->for($eatery)->create();
+
+            $eatery->features()->attach(
+                $features->random(fake()->numberBetween(1, 3))->pluck('id')
+            );
+        }
     }
 }

@@ -25,3 +25,16 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# AI-tool files (must not be part of the submitted repository)
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md
+/.claude/
+/.ai/
+/.junie/
+/.mcp.json
+/boost.json
+/.github/copilot-instructions.md
+/.github/skills/
+/database/database.sqlite
